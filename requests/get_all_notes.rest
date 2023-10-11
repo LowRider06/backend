@@ -1,1 +1,1 @@
-GET http://localhost:3001/api/notes
+GET https://phonebook-backend-zber.onrender.com/api/persons
