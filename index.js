@@ -59,8 +59,8 @@ app.post('/api/persons', (request, response) => {
   }
 
   const person = {
-    content: body.content,
-    important: body.important || false,
+    name: body.name,
+    number: body.number,
     date: new Date(),
     id: generateId(),
   }
