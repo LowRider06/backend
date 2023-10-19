@@ -10,89 +10,160 @@ const requestLogger = (request, response, next) => {
   next()
 }
 
-const unknownEndpoint = (request, response) => {
-  response.status(404).send({ error: 'unknown endpoint' })
-}
-
 app.use(cors())
 app.use(express.json())
 app.use(requestLogger)
 app.use(express.static('build'))
 
-let persons = [
-  {
-    id: 1,
-    name: "HTML is easy",
-    number: 1
-  }
-]
+/// begin mongoose
 
+const mongoose = require('mongoose')
 
-app.get('/', (req, res) => {
-  res.send('<h1>Hello World! test</h1>')
-})
-
-app.get('/api/persons', (req, res) => {
-  res.json(persons)
-})
-
-const generateId = () => {
-  const maxId = persons.length > 0
-    ? Math.max(...persons.map(n => n.id))
-    : 0
-  return maxId + 1
+if (process.argv.length<3) {
+  console.log('give password as argument')
+  process.exit(1)
 }
 
-app.post('/api/persons', (request, response) => {
-  const body = request.body
+const password = process.argv[2]
 
-  if (!body.name) {
-    return response.status(400).json({ 
-      error: 'name missing' 
-    })
+const url =
+  //`mongodb+srv://fullstack:${password}@cluster0.o1opl.mongodb.net/?retryWrites=true&w=majority`
+  `mongodb+srv://spc:${password}@cluster0.yoert.mongodb.net/?retryWrites=true&w=majority`
+mongoose.set('strictQuery',false)
+mongoose.connect(url) 
+
+const phoneBookSchema = new mongoose.Schema({
+  name:{
+    type: String,
+    minLength: 3,
+    required: true
+  },
+  number: {
+    type: String,
+    validate: {
+      validator: function(v) {
+        //return /\d{3}-\d{3}-\d{4}/.test(v)
+        return /\d{2,3}-\d{7}/.test(v)
+      },
+      message: props => `${props.value} is not a valid phone number!`
+    },
+    required: [true, 'User phone number required']
   }
-  
-  if (!body.number) {
-    return response.status(400).json({ 
-      error: 'number missing' 
-    })
-  }
+})
+
+const Person = mongoose.model('Phonebook', phoneBookSchema)
+
+app.put('/api/persons/:id', (request, response, next) => {
+  const body = request.body
 
   const person = {
     name: body.name,
     number: body.number,
-    date: new Date(),
-    id: generateId(),
   }
 
-  persons = persons.concat(person)
-
-  response.json(person)
+  Person.findByIdAndUpdate(request.params.id, person, { new: true })
+    .then(updatedPerson => {
+      response.json(updatedPerson)
+    })
+    .catch(error => next(error))
 })
+
+app.get('/api/persons', (request, response) => {
+  Person.find({}).then(persons => {
+    console.log('persons ', persons)
+    response.json(persons)
+  })
+})
+
+app.delete('/api/persons/:id', (request, response, next) => {
+  Person.findByIdAndRemove(request.params.id)
+    .then(result => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
+})
+
 
 app.get('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  const person = persons.find(person => person.id === id)
+  console.log('foo app.get = ', request.params.id)
+  Person.findById(String(request.params.id))  
+  .then(person => {
+      if (person) {
+        console.log('foo app.get person, = ', person)
+        response.json(person)
+      } else {
+        console.log('foo could not find person with id = ', request.params.id)
+        response.status(404).end()
+      }
+    })
+    .catch(error => {
+      console.log(error)
+      response.status(400).send({ error: 'malformatted id' })
+    })
+})
 
-  if (person) {
-    response.json(person)
-  } else {
-    response.status(404).end()
+app.post('/api/persons', (request, response, next) => {
+  console.log('foo got into post persons')
+  const body = request.body
+  console.log('request body.name === ', body.name)
+  if(body.name === undefined || body.name === '') {
+    console.log('got into body.name === undefined')
+    return response.status(400).json({ error: 'name missing' })
   }
+  
+  const person = new Person({
+    name: body.name,
+    number: body.number
+  })
 
-  response.json(person)
+  person.save().then(savedPerson =>{
+    response.json(savedPerson)
+  })
+  .catch(error => next(error))
+
 })
 
-app.delete('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id)
-  persons = persons.filter(person => person.id !== id)
+/*
+  begin error handling
+*/
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+  console.log('foo got into errorHandler')
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    console.log('foo got into error.name validation error', error.name)
+    return response.status(400).json({ error: error.message })
+  }
+  
+  next(error)
+}
 
-  response.status(204).end()
-})
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
 
 app.use(unknownEndpoint)
+app.use(errorHandler)
+/*
+  end error handling
+*/
 
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
+
+
+/*
+const person = new Person({
+  name: 'Abraham',
+  number: '12345'
+})
+
+person.save().then(result => {
+  console.log('person saved!')
+  mongoose.connection.close()
+})
+*/

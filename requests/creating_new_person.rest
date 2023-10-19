@@ -1,0 +1,8 @@
+//POST https://phonebook-backend-zber.onrender.com/api/persons
+POST https://localhost:3001/api/persons
+Content-Type: application/json
+
+{
+  "name": "VS code rest client is a pretty handy tool",
+  "number": 123
+}

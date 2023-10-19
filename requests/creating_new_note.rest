@@ -1,7 +1,0 @@
-POST https://phonebook-backend-zber.onrender.com/notes
-Content-Type: application/json
-
-{
-  "content": "VS code rest client is a pretty handy tool",
-  "important": true
-}
