@@ -19,7 +19,7 @@ app.use(express.static('build'))
 
 const mongoose = require('mongoose')
 
-if (process.argv.length<3) {
+if (process.argv.length < 3) {
   console.log('give password as argument')
   process.exit(1)
 }
@@ -29,11 +29,11 @@ const password = process.argv[2]
 const url =
   //`mongodb+srv://fullstack:${password}@cluster0.o1opl.mongodb.net/?retryWrites=true&w=majority`
   `mongodb+srv://spc:${password}@cluster0.yoert.mongodb.net/?retryWrites=true&w=majority`
-mongoose.set('strictQuery',false)
-mongoose.connect(url) 
+mongoose.set('strictQuery', false)
+mongoose.connect(url)
 
 const phoneBookSchema = new mongoose.Schema({
-  name:{
+  name: {
     type: String,
     minLength: 3,
     required: true
@@ -41,7 +41,7 @@ const phoneBookSchema = new mongoose.Schema({
   number: {
     type: String,
     validate: {
-      validator: function(v) {
+      validator: function (v) {
         //return /\d{3}-\d{3}-\d{4}/.test(v)
         return /\d{2,3}-\d{7}/.test(v)
       },
@@ -77,7 +77,7 @@ app.get('/api/persons', (request, response) => {
 
 app.delete('/api/persons/:id', (request, response, next) => {
   Person.findByIdAndRemove(request.params.id)
-    .then(result => {
+    .then(() => {
       response.status(204).end()
     })
     .catch(error => next(error))
@@ -86,8 +86,8 @@ app.delete('/api/persons/:id', (request, response, next) => {
 
 app.get('/api/persons/:id', (request, response) => {
   console.log('foo app.get = ', request.params.id)
-  Person.findById(String(request.params.id))  
-  .then(person => {
+  Person.findById(String(request.params.id))
+    .then(person => {
       if (person) {
         console.log('foo app.get person, = ', person)
         response.json(person)
@@ -106,20 +106,20 @@ app.post('/api/persons', (request, response, next) => {
   console.log('foo got into post persons')
   const body = request.body
   console.log('request body.name === ', body.name)
-  if(body.name === undefined || body.name === '') {
+  if (body.name === undefined || body.name === '') {
     console.log('got into body.name === undefined')
     return response.status(400).json({ error: 'name missing' })
   }
-  
+
   const person = new Person({
     name: body.name,
     number: body.number
   })
 
-  person.save().then(savedPerson =>{
+  person.save().then(savedPerson => {
     response.json(savedPerson)
   })
-  .catch(error => next(error))
+    .catch(error => next(error))
 
 })
 
@@ -135,7 +135,7 @@ const errorHandler = (error, request, response, next) => {
     console.log('foo got into error.name validation error', error.name)
     return response.status(400).json({ error: error.message })
   }
-  
+
   next(error)
 }
 
